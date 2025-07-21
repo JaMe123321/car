@@ -1,0 +1,124 @@
+body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column; /* 垂直分佈 */
+    background: linear-gradient(360deg, #408dc2 0%, #3c5979 100%);
+}
+.upper-container, .lower-container {
+    display: flex;
+    flex-direction: row;
+}
+
+.upper-container {
+    height: 70%; /* 上半部分佔70% */
+}
+
+.lower-container {
+    height: 30%; /* 下半部分佔30% */
+}
+
+.video-area {
+    flex: 7; /* 影像區域佔滿70%的寬度 */
+}
+
+.centered-title{
+    text-align: center;
+    font-size: 36px;
+}
+.control-area{
+    flex: 3; /* 控制區域和等級區域各佔30%的寬度 */
+}
+#parameter-forms {
+    display: block;
+    margin: 10% auto;
+    width: 30%;
+    border-radius: 5px;
+
+}
+.text_size{
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 40px;
+    text-align: center;
+}
+.input-group {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.input-group button {
+    height: 50px;
+    font-size: 20px;
+    cursor: pointer;
+    text-align: center;
+    background-color: #000000;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.button-group {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 50px;
+}
+
+.button-group input[type='submit'] {
+    height: 50px;
+    font-size: 20px;
+    cursor: pointer;
+    text-align: center;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+.button-group .button-common {
+    height: 50px;
+    font-size: 20px;
+    cursor: pointer;
+    text-align: center;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+
+.submit-settlement {
+    background-color: #e30822; /* 为今日结算按钮设置特定的背景颜色 */
+}
+
+.sales-query {
+    background-color: #0044cc; /* 为销量查询按钮设置另一种背景颜色 */
+}
+.grade-area {
+    flex: 3;
+    display: flex; /* 使其成為 flex 容器 */
+    flex-direction: row; /* 子元素將水平排列 */
+    align-items: center;
+    font-size: 80px;
+}
+
+.statistics-area {
+    flex: 8;
+    display: flex; /* 使其成為 flex 容器 */
+    flex-direction: row; /* 子元素將水平排列 */
+    justify-content: space-between; /* 子元素在容器中均勻分布 */
+    align-items: center; /* 子元素垂直居中 */
+}
+
+.statistics-area > div {
+    display: inline-block; /* 讓它們並排顯示 */
+    width: 25%; /* 四個子元素每個占25% */
+    text-align: center; /* 文本居中 */
+    margin-bottom: -40px; /* 給子元素添加左右邊距 */
+    font-size: 80px;
+}

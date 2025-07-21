@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>即時感測器距離</title>
+  <style>
+    /* ===== 共用：頁首 ===== */
+    .header {
+      background: #4285f4;
+      color: #fff;
+      padding: 1.2rem 1.5rem;
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    .header a {
+      position: absolute;
+      left: 1.5rem;
+      color: #fff;
+      font-size: 1rem;
+    }
+    .header h2 {
+      margin: 0 auto;
+      font-size: 1.8rem;
+      font-weight: normal;
+    }
+
+    /* ===== 感測器示意 ===== */
+    html { font-size: 16px; }
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: #f5f5f5;
+      color: #333;
+    }
+    #car-container {
+      position: relative;
+      width: 80vw;
+      max-width: 300px;
+      aspect-ratio: 1 / 2;
+      margin: 2rem auto;
+      background: #444;
+      border-radius: 8px;
+    }
+    .sensor-label {
+      position: absolute;
+      background: rgba(255,255,255,0.8);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 1.2rem;
+      white-space: nowrap;
+    }
+#label-front {  display: none !important;}
+    #label-left        { top: 50%;   left: -10px;        transform: translate(-100%, -50%); }
+    #label-front-left  { top: 10px;  left: 50px;         transform: translate(-50%, -100%); }
+    #label-front       { top: -10px; left: 50%;         transform: translate(-50%, -100%); }
+    #label-front-right { top: 10px;  right: 50px;        transform: translate(50%, -100%); }
+    #label-right       { top: 50%;   right: -10px;       transform: translate(100%, -50%); }
+
+    /* ===== 狀態框 ===== */
+    #status-box {
+      position: fixed;
+      top: 200px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2.5rem;
+      font-weight: bold;
+      text-align: center;
+      padding: 1rem;
+      background: #fff;
+      width: 300px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      z-index: 1000;
+    }
+
+    /* ===== 通用響應式 ===== */
+    @media (max-width: 600px) {
+      /* 調整 header */
+      .header {
+        padding: 0.8rem 1rem;
+      }
+      .header h2 {
+        font-size: 1.4rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .header a { display: none; }
+
+      /* 縮小感測器容器 */
+      #car-container {
+        width: 90vw;
+        max-width: 200px;
+        aspect-ratio: 1 / 2;
+        margin: 1.5rem auto;
+      }
+      .sensor-label {
+        font-size: 1rem;
+        padding: 3px 6px;
+      }
+
+      /* 調整狀態框 */
+      #status-box {
+        top: 140px;
+        width: 80vw;
+        max-width: 240px;
+        font-size: 2rem;
+        padding: 0.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <a href="/" title="返回主頁">← 返回主頁</a>
+    <h2>即時感測器距離</h2>
+  </div>
+
+  <div id="car-container">
+    <div id="label-left"        class="sensor-label">左邊：--</div>
+    <div id="label-front-left"  class="sensor-label">左前：--</div>
+    <div id="label-front"       class="sensor-label">正前：--</div>
+    <div id="label-front-right" class="sensor-label">右前：--</div>
+    <div id="label-right"       class="sensor-label">右邊：--</div>
+  </div>
+
+  <div id="status-box">安全</div>
+
+  <script>
+    const NAMES = ["左邊", "左前", "正前", "右前", "右邊"];
+    const THRESHOLD = 30;
+
+    async function fetchSensorData() {
+      try {
+        const res = await fetch('/sensor_data');
+        if (!res.ok) return;
+        const data = await res.json();
+        const parts = (data.data || "").split(',').map(s => parseFloat(s));
+        if (parts.length === 5) {
+          document.getElementById('label-left').textContent       = `左邊：${parts[0]}`;
+          document.getElementById('label-front-left').textContent = `左前：${parts[1]}`;
+          document.getElementById('label-front').textContent      = `正前：${parts[2]}`;
+          document.getElementById('label-front-right').textContent= `右前：${parts[3]}`;
+          document.getElementById('label-right').textContent      = `右邊：${parts[4]}`;
+        }
+        let status = "安全";
+        for (let i = 0; i < parts.length; i++) {
+          if (!isNaN(parts[i]) && parts[i] < THRESHOLD) { status = NAMES[i]; break; }
+        }
+        document.getElementById('status-box').textContent = status;
+      } catch (err) {
+        console.error("Fetch sensor_data error:", err);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchSensorData();
+      setInterval(fetchSensorData, 250);
+    });
+  </script>
+</body>
+</html>

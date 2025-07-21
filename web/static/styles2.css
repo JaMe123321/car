@@ -1,0 +1,86 @@
+/* Base styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+}
+
+/* Flex container for the form elements */
+.form-container {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 20px;
+}
+
+/* Styles for the fieldsets and legends */
+fieldset {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin: 10px;
+}
+
+legend {
+    padding: 0 5px;
+    font-weight: bold;
+}
+
+/* Common styles for form elements and buttons */
+label, select, input[type="date"], button {
+    padding: 5px 10px;
+    margin-right: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 20px;
+}
+
+button {
+    background-color: #5cb85c;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #4cae4c;
+}
+
+.charts-container {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.chart, .result {
+    border: 1px solid #ddd;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,.1);
+    border-radius: 5px;
+    padding: 15px;
+    margin: 10px;
+    flex: 1 1 calc(50% - 20px); /* flex-grow, flex-shrink, flex-basis */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+/* Styles for the chart canvas */
+canvas {
+    width: 100% !important;
+    height: 600px !important;
+    min-height: 200px; /* Or any other height you prefer */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .charts-container {
+        flex-direction: column;
+    }
+
+    .chart, .result {
+        /* Full width on small screens */
+        width: 100%;
+        margin: 10px 0;
+    }
+}

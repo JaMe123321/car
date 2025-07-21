@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>時間資料表</title>
+    <style>
+        /* 基本頁面設置 */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* 使內容對齊到頂部 */
+            height: 100vh;
+        }
+
+        body::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: url('https://webstatic.hoyoverse.com/upload/op-public/2023/04/29/2652a644335ab796bb7fa6b57099f4aa_8012118344558352898.jpeg');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        opacity: 0.3; /* 只對背景圖片設置透明度 */
+        z-index: -1; /* 保證背景圖片在內容下層 */
+    }
+
+    .container {
+        position: relative;
+        z-index: 1;
+        width: 80%;
+        max-width: 1200px;
+        padding: 20px;
+        background-color: #fff;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+    }
+
+        .container {
+            width: 80%;
+            max-width: 1200px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 30px;
+        }
+
+        /* 搜索區域 */
+        .search-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .search-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 1rem;
+            color: #555;
+        }
+
+        input[type="date"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+            width: 180px;
+            background-color: #f9f9f9;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* 資料表設置 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            opacity: 0.8; /* 設置資料表透明度為50% */
+        }
+
+        table th, table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            font-size: 1rem;
+        }
+
+        table th {
+            background-color: #f8f9fa;
+            color: #333;
+        }
+
+        table tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .no-data {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #888;
+        }
+
+        /* 屏幕尺寸適配 */
+        @media (max-width: 768px) {
+            .search-section {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .search-group {
+                margin-bottom: 15px;
+            }
+
+            table th, table td {
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>查詢資料表</h1>
+
+        <!-- 日期篩選區 -->
+        <div class="search-section">
+            <!-- 單日查詢 -->
+            <div class="search-group">
+                <label for="single-date">單日查詢：</label>
+                <input type="date" id="single-date" name="single-date">
+                <button onclick="searchBySingleDate()">查詢</button>
+            </div>
+
+            <!-- 區間查詢 -->
+            <div class="search-group">
+                <label for="start-date">開始日期：</label>
+                <input type="date" id="start-date" name="start-date">
+                <label for="end-date">結束日期：</label>
+                <input type="date" id="end-date" name="end-date">
+                <button onclick="searchByRange()">查詢日期範圍</button>
+            </div>
+        </div>
+
+        <!-- 資料表 -->
+        <table>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>數量</th>
+                    <th>上</th>
+                    <th>中</th>
+                    <th>下</th>
+                </tr>
+            </thead>
+            <tbody id="data-table-body">
+                <!-- 查詢結果將會被插入在這裡 -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // 單日查詢功能
+        function searchBySingleDate() {
+            const singleDate = document.getElementById("single-date").value;
+            if (singleDate) {
+                fetch(`/search_by_date?date=${singleDate}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        updateTable(data);
+                    })
+                    .catch(error => alert("查詢出錯：" + error));
+            } else {
+                alert("請選擇日期！");
+            }
+        }
+
+        // 區間查詢功能
+        function searchByRange() {
+            const startDate = document.getElementById("start-date").value;
+            const endDate = document.getElementById("end-date").value;
+
+            if (startDate && endDate) {
+                fetch(`/search_by_range?start_date=${startDate}&end_date=${endDate}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        updateTable(data);
+                    })
+                    .catch(error => alert("查詢出錯：" + error));
+            } else {
+                alert("請選擇完整的開始日期和結束日期！");
+            }
+        }
+
+        // 更新表格內容
+        function updateTable(data) {
+            const tableBody = document.getElementById("data-table-body");
+            tableBody.innerHTML = ''; // 清空表格
+
+            if (data.length === 0) {
+                const row = document.createElement("tr");
+                row.classList.add("no-data");
+                const cell = document.createElement("td");
+                cell.setAttribute("colspan", 5);
+                cell.innerText = "未找到符合條件的資料";
+                row.appendChild(cell);
+                tableBody.appendChild(row);
+            } else {
+                data.forEach(row => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td>${row.日期}</td>
+                        <td>${row.數量}</td>
+                        <td>${row.上}</td>
+                        <td>${row.中}</td>
+                        <td>${row.下}</td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            }
+        }
+    </script>
+
+</body>
+</html>

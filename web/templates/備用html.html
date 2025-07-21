@@ -1,0 +1,249 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 放在 <head> 裡 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>垃圾辨識系統</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Noto Sans TC', sans-serif; background: #f0f2f5; color: #333; display: flex; flex-direction: column; min-height: 100vh; }
+
+    .upper-container { display: flex; flex-wrap: wrap; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); flex: 1; }
+    .control-area { flex: 1 1 400px; padding: 1.5rem; background: rgba(255,255,255,0.9); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1rem; }
+    .control-area h1 { font-size: 2rem; color: #222; }
+    #current-time { font-size: 1.1rem; color: #555; }
+
+    .button-group { display: flex; gap: .8rem; flex-wrap: wrap; justify-content: center; }
+    .button-common, .save-button, .sensor-btn {
+      padding: .6rem 1.2rem; border: none; border-radius: 6px;
+      font-size: 1rem; font-weight: 500; cursor: pointer;
+      transition: transform .15s;
+    }
+    .button-common.time-search1 { background: #c0392b; color: #fff; }
+    .save-button               { background: #27ae60; color: #fff; }
+    .sensor-btn                { background: #f1c40f; color: #333; }
+    .button-common:hover,
+    .save-button:hover,
+    .sensor-btn:hover         { transform: translateY(-2px); }
+    .button-common.time-search1:hover { background: #a93226; }
+    .save-button:hover                { background: #229954; }
+    .sensor-btn:hover                 { background: #d4ac0d; }
+
+    .chart-area { width: 100%; height: 250px; margin-top: 1rem; }
+    .chart-area canvas { width: 100% !important; height: 100% !important; }
+
+        /* 視訊區塊容器，用於放置串流畫面 */
+.video-area {
+  /* 讓此區域在 flex 排版中有較大的彈性空間：
+     grow = 2（可放大至兩倍）、shrink = 1（可縮小）、basis = 400px（初始寬度） */
+  flex: 2 1 400px;
+  /* 設為相對定位，以便未來可放絕對定位的子元素（如 overlay） */
+  position: relative;
+  /* 背景設為黑色，預防畫面未填滿時出現白邊 */
+  background: #000;
+}
+/* 視訊影像本體 */
+.video-area img {
+  /* 寬度填滿父容器 */
+  width: 100%;
+  /* 高度填滿父容器 */
+  height: 100%;
+  /* 保持原始長寬比，並以 cover 模式裁切多餘部分，確保容器被填滿 */
+  object-fit: cover;
+}
+
+    .lower-container { padding: 1.5rem; background: #fafafa; }
+    .statistics-area { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap:1rem; }
+    .statistics-item { background:#fff; border-radius:10px; padding:2rem; text-align:center; box-shadow:0 1px 6px rgba(0,0,0,0.08); transition:box-shadow .2s; }
+    .statistics-item:hover { box-shadow:0 3px 12px rgba(0,0,0,0.12); }
+    .stat-label { font-size:.9rem; color:#777; }
+    .stat-value { font-size:2.2rem; font-weight:700; color:#222; }
+
+    #toast {
+      position: fixed; bottom:20px; right:20px;
+      background: rgba(0,0,0,0.75); color:#fff;
+      padding:.75rem 1.25rem; border-radius:8px;
+      font-size:.9rem; opacity:0; pointer-events:none;
+      transition: opacity .3s; z-index:1000;
+    }
+
+    /* ★ 把截圖容器移出 control-area，fixed + z-index 超高，確保在最上層 ★ */
+    #capture-container {
+      position: fixed;
+      top: 520px;               /* 你可以調整它想要的位置 */
+      right: 1300px;
+      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: .5rem;
+    }
+    #capture-label {
+      color: #fff;
+      background: rgba(0,0,0,0.6);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: .9rem;
+    }
+    #capture-preview {
+      width: 200px; height: 200px;
+      object-fit: contain;
+      border: 2px solid #28a745;
+      border-radius: 4px;
+    }
+
+/* 1）一定要有這行才會正確響應式*/
+@viewport { width: device-width; }
+@media (max-width: 600px) {
+  /* 整個上半區改直排、不換行 */
+  .upper-container {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch;
+  }
+
+  /* 视频全宽、自动高度，去掉黑边 */
+  .video-area,
+  .video-area img {
+    width: 100% !important;
+    height: auto !important;
+    object-fit: contain !important;
+    background: none !important;
+    max-height: none !important;
+  }
+
+    /* 隱藏統計卡片 */
+    .lower-container {
+        display: none !important;
+    }
+
+    /* 長條圖設定 */
+    .chart-area {
+        width: 100%;
+        margin-top: 1rem;
+    }
+}
+
+  </style>
+</head>
+<body>
+  <div class="upper-container">
+    <div class="control-area">
+      <h1>垃圾辨識系統</h1>
+      <div id="current-time">目前時間：--:--:--</div>
+      <div class="button-group">
+        <button class="button-common time-search1" onclick="location.href='/time_search1'">歷史查詢</button>
+        <button id="save-btn" class="save-button">儲存統計資料</button>
+        <button class="sensor-btn" onclick="location.href='/sensor_page'">即時感測器距離</button>
+      </div>
+      <div class="chart-area">
+        <canvas id="statsChart"></canvas>
+      </div>
+    </div>
+    <div class="video-area">
+      <img src="{{ url_for('video_feed') }}" alt="video stream"/>
+    </div>
+  </div>
+
+  <div class="lower-container">
+    <div class="statistics-area">
+      <div class="statistics-item">
+        <div class="stat-label">總數量</div>
+        <div class="stat-value" id="total-gherkin">0</div>
+      </div>
+      <div class="statistics-item">
+        <div class="stat-label">衛生紙</div>
+        <div class="stat-value" id="level-S">0</div>
+      </div>
+      <div class="statistics-item">
+        <div class="stat-label">寶特瓶</div>
+        <div class="stat-value" id="level-A">0</div>
+      </div>
+      <div class="statistics-item">
+        <div class="stat-label">塑膠袋</div>
+        <div class="stat-value" id="level-B">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ 這一段放在 body 最底，並以 fixed + 高 z-index 顯示 ★ -->
+  <div id="capture-container">
+    <div id="capture-label"></div>
+    <img id="capture-preview" alt="截圖預覽">
+  </div>
+
+  <!-- jQuery & Chart.js -->
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    $(function(){
+      // 時鐘
+      function updateClock(){
+        const now=new Date(),
+              hh=now.getHours().toString().padStart(2,'0'),
+              mm=now.getMinutes().toString().padStart(2,'0'),
+              ss=now.getSeconds().toString().padStart(2,'0');
+        $('#current-time').text(`目前時間：${hh}:${mm}:${ss}`);
+      }
+      updateClock(); setInterval(updateClock,1000);
+
+      // Chart.js
+      const ctx = document.getElementById('statsChart').getContext('2d'),
+            statsChart = new Chart(ctx, {
+              type:'bar',
+              data:{ labels:['總數量','衛生紙','寶特瓶','塑膠袋'], datasets:[{ label:'垃圾數量', data:[0,0,0,0] }] },
+              options:{ scales:{ y:{ beginAtZero:true } }, responsive:true, maintainAspectRatio:false }
+            });
+
+      // 更新統計
+      setInterval(()=>{
+        $.get('/get_statistics', r=>{
+          $('#total-gherkin').text(r.total_gherkin);
+          $('#level-S').text(r.level_S);
+          $('#level-A').text(r.level_A);
+          $('#level-B').text(r.level_B);
+          statsChart.data.datasets[0].data = [
+            r.total_gherkin, r.level_S, r.level_A, r.level_B
+          ];
+          statsChart.update();
+        });
+      },1000);
+
+      // 儲存 & toast
+      $('#save-btn').click(()=>{
+        $.post('/save',{}, res=>{
+          const msg = res.status==='ok'? '✅ 儲存成功'
+                    : res.status==='no_data'? '⚠️ 沒有資料可儲存'
+                    : '❌ 儲存失敗';
+          $('#toast').text(msg).css('opacity',1);
+          setTimeout(()=>$('#toast').css('opacity',0),1500);
+        }).fail(()=>{
+          $('#toast').text('❌ 儲存過程出錯').css('opacity',1);
+          setTimeout(()=>$('#toast').css('opacity',0),1500);
+        });
+      });
+
+      // 左下角截圖
+      function fetchLatestCapture(){
+        $.get('/latest_capture', res=>{
+          if(res.img_b64){
+            $('#capture-preview').attr('src','data:image/jpeg;base64,'+res.img_b64);
+            $('#capture-label').text(res.label);
+            $('#capture-container').show();
+          } else {
+            $('#capture-container').hide();
+          }
+        });
+      }
+      setInterval(fetchLatestCapture,1000);
+    });
+  </script>
+<!-- 放在 </body> 前 -->
+<div id="toast"></div>
+
+</body>
+</html>

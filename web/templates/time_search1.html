@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>自走車辨識資料查詢</title>
+  <style>
+    /* ===== 基本重置 & 版面 ===== */
+    * { box-sizing: border-box; margin:0; padding:0; }
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: #f5f5f5;
+      color: #333;
+    }
+    a { text-decoration: none; }
+
+    /* ===== 頁首 ===== */
+    .header {
+      background: #4285f4;
+      color: #fff;
+      padding: 2.8rem 1.5rem;
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    .header a {
+      position: absolute;
+      left: 1.5rem;
+      color: #fff;
+      font-size: 1rem;
+    }
+    .header h2 {
+      margin: 0;
+      font-size: 2.3rem;
+      font-weight: normal;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    /* ===== 主容器 ===== */
+    .container {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    /* ===== 查詢列 ===== */
+    .query-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .query-row label {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    .query-row input[type="date"] {
+      padding: .5rem .8rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .query-row button {
+      background: #4caf50;
+      color: #fff;
+      border: none;
+      padding: .6rem 1.2rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .query-row button:hover {
+      background: #43a047;
+    }
+
+    /* ===== 表格 ===== */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: .8rem;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #333;
+      color: #fff;
+    }
+
+    /* ===== Toast ===== */
+    #toast {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      padding: .75rem 1.25rem;
+      border-radius: 8px;
+      font-size: .9rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s ease-in-out;
+      z-index: 1000;
+    }
+
+    /* ===== 響應式 ===== */
+    @media (max-width: 600px) {
+  .header h2 {
+    /* 缩小字体，让整行能塞下 */
+      font-size: 1.4rem !important;
+    /* 禁止换行 */
+    white-space: nowrap !important;
+    /* 超出隐藏并省略号 */
+    overflow: visible !important;
+    text-overflow: ellipsis !important;
+    /* 保证水平居中 */
+    left: calc(50% + 10px) !important;
+    transform: translateX(-50%) !important;
+  }
+.header a {
+  display: none !important;
+}
+
+
+
+  .query-row {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+}
+
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <a href="/" title="返回主頁">← 返回主頁</a>
+    <h2>自走車辨識資料查詢</h2>
+  </div>
+
+  <div class="container">
+    <form id="date-form" class="query-row">
+      <label for="date">日期：</label>
+      <!-- 預設值由 Flask 傳入 -->
+      <input type="date" id="date" name="date" value="{{ today }}" required>
+      <button type="submit">查詢</button>
+    </form>
+
+    <table id="resultTable">
+      <thead>
+        <tr>
+          <th>日期</th>
+          <th>時間</th>
+          <th>總數量</th>
+          <th>衛生紙</th>
+          <th>寶特瓶</th>
+          <th>塑膠袋</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- AJAX 回來的資料會插在這 -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Toast 容器 -->
+  <div id="toast"></div>
+
+  <!-- jQuery & 查詢邏輯 -->
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script>
+  // 綁定查詢表單送出
+  $('#date-form').on('submit', function(e) {
+    e.preventDefault();
+    const date = $('#date').val();
+    if (!date) {
+      showToast('⚠️ 請選擇日期');
+      return;
+    }
+    $.ajax({
+      url: '/select_date',
+      type: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ date: date }),
+      success: function(resp) {
+        // 沒資料
+        if (!resp || resp.length === 0) {
+          $('#resultTable tbody').empty();
+          showToast('⚠️ 沒有找到相關資料');
+          return;
+        }
+        // 填表，只顯示整數
+        let html = '';
+        resp.forEach(r => {
+          // 轉成整數，若為 NaN 就顯示 0
+          const total   = Number.isInteger(+r.Total)   ? +r.Total   : parseInt(r.Total, 10)   || 0;
+          const tissue  = Number.isInteger(+r.Tissue)  ? +r.Tissue  : parseInt(r.Tissue, 10)  || 0;
+          const bottle  = Number.isInteger(+r.Bottle)  ? +r.Bottle  : parseInt(r.Bottle, 10)  || 0;
+          const plastic = Number.isInteger(+r.Plastic) ? +r.Plastic : parseInt(r.Plastic, 10) || 0;
+
+          html += `<tr>
+            <td>${r.date}</td>
+            <td>${r.time}</td>
+            <td>${total}</td>
+            <td>${tissue}</td>
+            <td>${bottle}</td>
+            <td>${plastic}</td>
+          </tr>`;
+        });
+        $('#resultTable tbody').html(html);
+      },
+      error: function() {
+        showToast('❌ 查詢失敗，請稍後再試');
+      }
+    });
+  });
+
+  // 通用的 Toast 顯示函式
+  function showToast(msg, duration = 1500) {
+    const $t = $('#toast');
+    $t.text(msg).css('opacity', 1);
+    setTimeout(() => $t.css('opacity', 0), duration);
+  }
+</script>
+</body>
+</html>

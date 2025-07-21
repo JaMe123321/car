@@ -1,0 +1,348 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 放在 <head> 裡 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>垃圾辨識系統</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Noto Sans TC', sans-serif; background: #f0f2f5; color: #333; display: flex; flex-direction: column; min-height: 100vh; }
+
+    .upper-container { display: flex; flex-wrap: wrap; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); flex: 1; }
+    .control-area { flex: 1 1 400px; padding: 1.5rem; background: rgba(255,255,255,0.9); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1rem; }
+    .control-area h1 { font-size: 2rem; color: #222; }
+    #current-time { font-size: 1.1rem; color: #555; }
+
+    .button-group { display: flex; gap: .8rem; flex-wrap: wrap; justify-content: center; }
+    .button-common, .save-button, .sensor-btn {
+      padding: .6rem 1.2rem; border: none; border-radius: 6px;
+      font-size: 1rem; font-weight: 500; cursor: pointer;
+      transition: transform .15s;
+    }
+    .button-common.time-search1 { background: #c0392b; color: #fff; }
+    .save-button               { background: #27ae60; color: #fff; }
+    .sensor-btn                { background: #f1c40f; color: #333; }
+    .button-common:hover,
+    .save-button:hover,
+    .sensor-btn:hover         { transform: translateY(-2px); }
+    .button-common.time-search1:hover { background: #a93226; }
+    .save-button:hover                { background: #229954; }
+    .sensor-btn:hover                 { background: #d4ac0d; }
+
+    .chart-area { width: 100%; height: 250px; margin-top: 1rem; }
+    .chart-area canvas { width: 100% !important; height: 100% !important; }
+
+        /* 視訊區塊容器，用於放置串流畫面 */
+.video-area {
+  /* 讓此區域在 flex 排版中有較大的彈性空間：
+     grow = 2（可放大至兩倍）、shrink = 1（可縮小）、basis = 400px（初始寬度） */
+  flex: 2 1 400px;
+  /* 設為相對定位，以便未來可放絕對定位的子元素（如 overlay） */
+  position: relative;
+  /* 背景設為黑色，預防畫面未填滿時出現白邊 */
+  background: #000;
+}
+/* 視訊影像本體 */
+.video-area img {
+  /* 寬度填滿父容器 */
+  width: 100%;
+  /* 高度填滿父容器 */
+  height: 100%;
+  /* 保持原始長寬比，並以 cover 模式裁切多餘部分，確保容器被填滿 */
+  object-fit: cover;
+}
+
+    .lower-container { padding: 1.5rem; background: #fafafa; }
+    .statistics-area { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap:1rem; }
+    .statistics-item { background:#fff; border-radius:10px; padding:2rem; text-align:center; box-shadow:0 1px 6px rgba(0,0,0,0.08); transition:box-shadow .2s; }
+    .statistics-item:hover { box-shadow:0 3px 12px rgba(0,0,0,0.12); }
+    .stat-label { font-size:.9rem; color:#777; }
+    .stat-value { font-size:2.2rem; font-weight:700; color:#222; }
+
+    #toast {
+      position: fixed; bottom:20px; right:20px;
+      background: rgba(0,0,0,0.75); color:#fff;
+      padding:.75rem 1.25rem; border-radius:8px;
+      font-size:.9rem; opacity:0; pointer-events:none;
+      transition: opacity .3s; z-index:1000;
+    }
+
+    /* ★ 把截圖容器移出 control-area，fixed + z-index 超高，確保在最上層 ★ */
+    #capture-container {
+      position: fixed;
+      top: 520px;               /* 你可以調整它想要的位置 */
+      right: 1300px;
+      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: .5rem;
+    }
+    #capture-label {
+      color: #fff;
+      background: rgba(0,0,0,0.6);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: .9rem;
+    }
+    #capture-preview {
+      width: 200px; height: 200px;
+      object-fit: contain;
+      border: 2px solid #28a745;
+      border-radius: 4px;
+    }
+
+/* 1）一定要有這行才會正確響應式*/
+@viewport { width: device-width; }
+@media (max-width: 600px) {
+  /* 标题一行 & 隐藏返回 */
+  .header h2 {
+    font-size: 1.3rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .header a {
+    display: none;
+  }
+
+  /* 画面区无多余空隙 */
+  .video-area,
+  .video-area img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    margin: 0;
+    padding: 0;
+    top: -2rem !important;
+  }
+
+  /* 图表扁一些 */
+  .chart-area {
+    height: 240px;
+    margin: 0.5rem 0;
+  }
+
+  /* 按钮横排、缩小、平分宽度 */
+  .button-group {
+    display: flex;
+    justify-content: space-around;
+    gap: 0.5rem;
+    margin: 0 auto 1rem;
+    width: 100%;
+    max-width: 600px;
+  }
+  .button-common,
+  .save-button,
+  .sensor-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+  }
+
+  /* 隐藏底部卡片 */
+  .lower-container {
+    display: none;
+  }
+}
+
+
+  </style>
+</head>
+<body>
+  <div class="upper-container">
+    <div class="control-area">
+      <h1>垃圾辨識系統</h1>
+      <div id="current-time">目前時間：--:--:--</div>
+      <div class="button-group">
+        <button class="button-common time-search1" onclick="location.href='/time_search1'">歷史查詢</button>
+        <button id="save-btn" class="save-button">儲存統計資料</button>
+        <button class="sensor-btn" onclick="location.href='/sensor_page'">即時感測器距離</button>
+      </div>
+      <div class="chart-area">
+        <canvas id="statsChart"></canvas>
+      </div>
+    </div>
+    <div class="video-area">
+      <img src="{{ url_for('video_feed') }}" alt="video stream"/>
+    </div>
+  </div>
+
+  <div class="lower-container">
+    <div class="statistics-area">
+      <div class="statistics-item">
+        <div class="stat-label">總數量</div>
+        <div class="stat-value" id="total-gherkin">0</div>
+      </div>
+      <div class="statistics-item">
+        <div class="stat-label">衛生紙</div>
+        <div class="stat-value" id="level-S">0</div>
+      </div>
+      <div class="statistics-item">
+        <div class="stat-label">寶特瓶</div>
+        <div class="stat-value" id="level-A">0</div>
+      </div>
+      <div class="statistics-item">
+        <div class="stat-label">塑膠袋</div>
+        <div class="stat-value" id="level-B">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ 這一段放在 body 最底，並以 fixed + 高 z-index 顯示 ★ -->
+  <div id="capture-container">
+    <div id="capture-label"></div>
+    <img id="capture-preview" alt="截圖預覽">
+    <img id="cameraView" alt="即時影像" src="">
+
+  </div>
+
+  <!-- jQuery & Chart.js -->
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+  <script>
+  $(function(){
+    // 時鐘
+    function updateClock(){
+      const now = new Date(),
+            hh  = now.getHours().toString().padStart(2,'0'),
+            mm  = now.getMinutes().toString().padStart(2,'0'),
+            ss  = now.getSeconds().toString().padStart(2,'0');
+      $('#current-time').text(`目前時間：${hh}:${mm}:${ss}`);
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Chart.js 初始化
+    const ctx = document.getElementById('statsChart').getContext('2d');
+    const statsChart = new Chart(ctx, {
+      type:'bar',
+      data:{
+        labels:['總數量','衛生紙','寶特瓶','塑膠袋'],
+        datasets:[{ label:'垃圾數量', data:[0,0,0,0] }]
+      },
+      options:{
+        scales:{ y:{ beginAtZero:true } },
+        responsive:true,
+        maintainAspectRatio:false
+      }
+    });
+
+    // 每秒更新統計
+    setInterval(()=>{
+      $.get('/get_statistics', r=>{
+        $('#total-gherkin').text(r.total_gherkin);
+        $('#level-S').text(r.level_S);
+        $('#level-A').text(r.level_A);
+        $('#level-B').text(r.level_B);
+        statsChart.data.datasets[0].data = [
+          r.total_gherkin, r.level_S, r.level_A, r.level_B
+        ];
+        statsChart.update();
+      });
+    }, 1000);
+
+    // 儲存按鈕 + Toast
+    $('#save-btn').click(()=>{
+      $.post('/save', {}, res=>{
+        const msg = res.status==='ok'      ? '✅ 儲存成功'
+                  : res.status==='no_data'? '⚠️ 沒有資料可儲存'
+                  : '❌ 儲存失敗';
+        $('#toast').text(msg).css('opacity',1);
+        setTimeout(()=>$('#toast').css('opacity',0),1500);
+      }).fail(()=>{
+        $('#toast').text('❌ 儲存過程出錯').css('opacity',1);
+        setTimeout(()=>$('#toast').css('opacity',0),1500);
+      });
+    });
+
+    // 左下角截圖
+    function fetchLatestCapture() {
+  $.get('/latest_snapshot', res => {
+    if (res.image) {
+      $('#capture-preview')
+        .attr('src', 'data:image/jpeg;base64,' + res.image);
+      $('#capture-label').text(res.label || '未知');
+      $('#capture-container').show();
+    } else {
+      $('#capture-container').hide();
+    }
+  });
+}
+setInterval(fetchLatestCapture, 1000);
+
+
+    // Socket.IO 初始化
+    const socket = io();
+
+    // 錄影開始通知#
+    socket.on('recording_started', data => {
+      const msg = `🟢 開始錄影：${data.filename}`;
+      $('#toast').text(msg).css('opacity',1);
+      setTimeout(()=>$('#toast').css('opacity',0),2000);
+    });
+    //截圖通知
+    let lastImage = "";  // 用來避免重複通知
+
+setInterval(() => {
+  fetch('/latest_snapshot')
+    .then(res => res.json())
+    .then(data => {
+      if (data.image && data.image !== lastImage) {
+        lastImage = data.image;
+
+        // 顯示通知
+        document.getElementById('notify-label').innerText = '🚨 偵測到：' + data.label;
+        document.getElementById('notify-img').src = 'data:image/jpeg;base64,' + data.image;
+        document.getElementById('notify').style.display = 'block';
+
+        // 播放音效
+        document.getElementById('snap-sound').play();
+
+        // 自動 4 秒後隱藏
+        setTimeout(() => {
+          document.getElementById('notify').style.display = 'none';
+        }, 4000);
+      }
+    });
+}, 1500);
+
+
+    // 實時影像更新（若用 socket.io 推 JPEG Base64）
+    socket.on('update', payload => {
+      if(payload.image){
+        $('#cameraView').attr(
+          'src', 'data:image/jpeg;base64,' + payload.image
+        );
+      }
+      // 如需同步統計，也可在這更新
+      if(payload.stats){
+        $('#total-gherkin').text(payload.stats.Total);
+        $('#level-S').text(payload.stats.Tissue);
+        $('#level-A').text(payload.stats.Bottle);
+        $('#level-B').text(payload.stats.Plastic);
+        statsChart.data.datasets[0].data = [
+          payload.stats.Total,
+          payload.stats.Tissue,
+          payload.stats.Bottle,
+          payload.stats.Plastic
+        ];
+        statsChart.update();
+      }
+    });
+
+  });
+</script>
+
+<!-- 放在 </body> 前 -->
+<div id="toast"></div>
+
+</body>
+</html>
